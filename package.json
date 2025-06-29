@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node opencart/Backend/src/server.js",
-    "dev": "nodemon opencart/Backend/src/server.js"
+    "dev": "nodemon Backend/src/server.js"
   },
   "type":"module",
   "repository": {
