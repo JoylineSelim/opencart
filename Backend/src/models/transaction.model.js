@@ -60,7 +60,7 @@ const transactionSchema = new mongoose.Schema({
         trim: true,
     },
     metadata: {
-        type: map,
+        type: Map,
         of: String
     },
     refunds:[{
@@ -81,8 +81,10 @@ const transactionSchema = new mongoose.Schema({
         }
     }],
     fees:{
-        stripe: Number,
+        stripe: {
+        type:Number,
         default: 0
+    }
     },
     receiptUrl: String,
     failureReason: String,

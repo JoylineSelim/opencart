@@ -1,5 +1,4 @@
 import PaymentService from "../Services/paymentService.js";
-import {validationResult} from "express-validator";
 import logger from "../utils/logger.js";
 
 class PaymentController {
@@ -28,6 +27,7 @@ class PaymentController {
         success: true,
         message: 'Payment intent created successfully',
         data: result
+  
       });
     } catch (error) {
       logger.error('Create payment intent error:', error);
@@ -107,4 +107,4 @@ class PaymentController {
     }
   }
 }
-export default PaymentController;
+export default PaymentController

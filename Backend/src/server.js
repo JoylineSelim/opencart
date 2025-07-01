@@ -5,7 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 import productRouter from './Routes/productRoutes.js';
-
+import paymentRouter from './Routes/paymentRoutes.js';
 const app = express();
 const PORT =5000
 const __filename = fileURLToPath(import.meta.url);
@@ -15,6 +15,8 @@ dotenv.config({ path: path.join(__dirname, '.env') })
 
 app.use(express.json());//allows us to accept json data into the req.body
 app.use("/api/products/",productRouter)
+app.use('api/payments',paymentRouter)
+
 
 
 const startServer = async() =>{
