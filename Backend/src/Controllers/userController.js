@@ -3,14 +3,12 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import logger from '../utils/logger.js'
+import { generateAccessToken,generateRefreshToken } from "../utils/tokenService.js";
+import { OAuth2Client } from "google-auth-library";
 
-//Assist user sigin
-const generateToken = (user) =>{
-    return jwt.sign({id:user._id,role:user.role},process.env.JWT_SECRET,{
-        expiresIn: '7d'
-    })
-}
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
 
+//Register a new User
 export const registerUser = async (req,res) =>{
     try {
         const {email,password,firstName,lastName,phone} = req.body
@@ -55,14 +53,27 @@ export const loginUser = async (req,res) =>{
         const {email,password} = req.body
         const user = await findOne({email}).select('+password')
 
-        if (!user){
-            return res.status(400),json({message:"Invalid email or username"})
+        if (!user || !(await user.comparePassword(password))){
+            return res.status(400),json({message:"Invalid credentials"})
         }
-        const isMatch = await user.comparePassword(password);
-        if(!isMatch) return res.staus(400).json({message:"Invalid Password"})
         
-        const token = generateToken(user)
-        res.status(200).json({message:"Login Successful"})
+        const accessToken = generateAccessToken(user);
+        const refreshToken = generateRefreshToken(user);
+
+        user.refreshToken.push({ token: refreshToken });
+        await user.save()
+
+        res.status(200).json({
+      accessToken,
+      refreshToken,
+      user: {
+        id: user._id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role},
+        message:"Login Successful"
+        })
     } catch (error) {
         logger.error("Login attempt failed",{error})
         res.status(500).json({message:"Server Error"})
@@ -71,6 +82,8 @@ export const loginUser = async (req,res) =>{
 
 }
 
+
+//Get the User Profile
 export const getUserProfile = async (req,res) =>{
     try {
         const user = await User.findById(req.user.id).select('-password -refreshToken -twoFactorSecret')
@@ -104,6 +117,35 @@ export const forgotPassword = async (req,res) =>{
 
     }
 }
+
+
+//Reset password after clicking on forgot password
+export const resetPassword = async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+    const user = await User.findOne({
+      passwordResetToken: hashedToken,
+      passwordResetExpires: { $gt: Date.now() }
+    });
+
+    if (!user) return res.status(400).json({ message: 'Token is invalid or has expired' });
+
+    user.password = newPassword; 
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+
+    await user.save();
+
+    res.status(200).json({ message: 'Password reset successful. You can now log in.' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error resetting password' });
+  }
+};
+
+//verify the user's email
 export const verifyEmail = async (req,res) =>{
     try {
     const {token} = req.body
@@ -126,6 +168,8 @@ export const verifyEmail = async (req,res) =>{
     
 }
 
+
+//Update a user's profile
 export const updateProfile = async (req,res) =>{
     try {
         const updates = {...req.body}
@@ -144,6 +188,25 @@ export const updateProfile = async (req,res) =>{
     }
     
 }
+
+//User updates Password when logged in
+export const updatePassword = async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+    const user = await User.findById(req.user.id).select('+password');
+
+    const isMatch = await user.comparePassword(oldPassword); 
+    if (!isMatch) return res.status(401).json({ message: 'Old password is incorrect' });
+
+    user.password = newPassword;
+    await user.save();
+
+    res.status(200).json({ message: 'Password updated successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Could not update password' });
+  }
+};
+
 
 //logout 
 // @desc    Logout user
@@ -165,5 +228,92 @@ export const logoutUser = async (req, res) => {
   } catch (error) {
     logger.error('Logout failed', { error });
     res.status(500).json({ message: 'Logout failed' });
+  }
+};
+
+
+//Refresh token endpoint
+export const refreshAccessToken = async (req, res) => {
+  const { refreshToken } = req.body;
+
+  if (!refreshToken) return res.status(401).json({ message: 'Refresh token required' });
+
+  try {
+    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+
+    const user = await User.findById(decoded.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const tokenExists = user.refreshToken.find(rt => rt.token === refreshToken);
+    if (!tokenExists) return res.status(403).json({ message: 'Invalid refresh token' });
+
+    const newAccessToken = generateAccessToken(user);
+    const newRefreshToken = generateRefreshToken(user);
+
+    // Optionally rotate the token
+    user.refreshToken = user.refreshToken.filter(rt => rt.token !== refreshToken);
+    user.refreshToken.push({ token: newRefreshToken });
+    await user.save();
+
+    res.status(200).json({
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken,
+    });
+  } catch (err) {
+    return res.status(403).json({ message: 'Invalid or expired refresh token' });
+  }
+};
+
+
+//google login endpoint
+export const googleLogin = async (req, res) => {
+  const { idToken } = req.body;
+
+  if (!idToken) return res.status(400).json({ message: 'ID token is required' });
+
+  try {
+    const ticket = await client.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    const { email, given_name, family_name, sub } = payload;
+
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      // Register new user
+      user = await User.create({
+        email,
+        firstName: given_name,
+        lastName: family_name,
+        password: sub, // Placeholder, won't be used
+        isEmailVerified: true,
+      });
+    }
+
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
+
+    // Store refresh token
+    user.refreshToken.push({ token: refreshToken });
+    await user.save();
+
+    res.status(200).json({
+      accessToken,
+      refreshToken,
+      user: {
+        id: user._id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+      },
+    });
+
+  } catch (error) {
+    console.error('Google login error:', error);
+    res.status(401).json({ message: 'Invalid Google ID token' });
   }
 };

@@ -123,4 +123,5 @@ userSchema.methods.createEmailVerificationToken = function() {
     
     return verificationToken;
 }
+
 export default mongoose.model('User', userSchema);
