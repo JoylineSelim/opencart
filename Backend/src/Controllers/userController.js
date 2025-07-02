@@ -2,7 +2,7 @@ import user from "../models/user.model.js";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
-import logger from '..utils/logger.js'
+import logger from '../utils/logger.js'
 
 //Assist user sigin
 const generateToken = (user) =>{

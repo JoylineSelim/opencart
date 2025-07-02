@@ -1,5 +1,4 @@
-import router from "./paymentRoutes"
-import express from express
+import express from 'express'
 import { 
     registerUser,
     loginUser,
@@ -10,9 +9,11 @@ import {
     logoutUser
 
  } from "../Controllers/userController.js"
+ import {protect} from '../middleware/authMiddleware.js';
 
- const router = express.Router()
- router.post('/register', registerUser);
+const router = express.Router()
+
+router.post('/register', registerUser);
 router.post('/login', loginUser);
 router.get('/profile', protect, getUserProfile);
 router.put('/profile', protect, updateProfile);
