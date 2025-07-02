@@ -144,3 +144,26 @@ export const updateProfile = async (req,res) =>{
     }
     
 }
+
+//logout 
+// @desc    Logout user
+// @route   POST /api/users/logout
+// @access  Private
+export const logoutUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // Remove token from current device
+    const tokenToRemove = req.body.refreshToken;
+    user.refreshToken = user.refreshToken.filter(rt => rt.token !== tokenToRemove);
+
+    await user.save();
+
+    res.status(200).json({ message: 'Logged out successfully' });
+  } catch (error) {
+    logger.error('Logout failed', { error });
+    res.status(500).json({ message: 'Logout failed' });
+  }
+};
