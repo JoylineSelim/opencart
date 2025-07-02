@@ -83,9 +83,7 @@ const userSchema = new mongoose.Schema({
 
 
 );
-//INDEXES
-userSchema.index({ email: 1 });
-userSchema.index({ stripeCustomerId: 1 });
+
 
 //password hashing middleware
 userSchema.pre('save', async function(next) {

@@ -15,7 +15,7 @@ dotenv.config({ path: path.join(__dirname, '.env') })
 
 app.use(express.json());//allows us to accept json data into the req.body
 app.use("/api/products/",productRouter)
-app.use('api/payments',paymentRouter)
+app.use('/api/payments',paymentRouter)
 
 
 

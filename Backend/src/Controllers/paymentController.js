@@ -1,10 +1,12 @@
 import PaymentService from "../Services/paymentService.js";
 import logger from "../utils/logger.js";
+import { validationResult } from 'express-validator';
 
 class PaymentController {
     static async createPaymentIntent(req, res) {
     try {
       const errors = validationResult(req);
+      console.log("Searching for errors:", errors);
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
@@ -12,9 +14,10 @@ class PaymentController {
           errors: errors.array()
         });
       }
-
-      const { amount, currency, metadata } = req.body;
-      const userId = req.user.id;
+      console.log("No validation errors found, proceeding with payment intent creation");
+      
+      const { userId,amount, currency, metadata } = req.body;
+      
 
       const result = await PaymentService.createPaymentIntent(
         userId,
