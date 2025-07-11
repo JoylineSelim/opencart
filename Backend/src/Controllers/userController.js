@@ -5,7 +5,17 @@ import jwt from "jsonwebtoken";
 import logger from '../utils/logger.js'
 import { generateAccessToken,generateRefreshToken } from "../utils/tokenService.js";
 import { OAuth2Client } from "google-auth-library";
+import EmailService from "../Services/emailService.js";
 
+const emailingService = new EmailService({
+    host: process.env.EMAIL_HOST,
+    port: process.env.EMAIL_PORT,
+    email: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+    secure: process.env.EMAIL_SECURE === 'true', 
+    fromName: 'OpenCart Support',
+    baseURL : process.env.BASE_URL || 'http://localhost:5000'
+});
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
 
 //Register a new User
@@ -19,7 +29,7 @@ export const registerUser = async (req,res) =>{
         //const confirmPassword = async
         const existingUser = await user.findOne({email})
         if(existingUser){
-            res.status(400).json({message:"Email is linked to an account"})
+          return  res.status(400).json({message:"Email is linked to an account"})
 
         }
 
@@ -27,16 +37,17 @@ export const registerUser = async (req,res) =>{
             email,password,firstName,lastName,phone
         })
 
-        const verificationToken= newUser.createEmailVerificationToken();
+        const verificationToken= crypto.randomBytes(32).toString('hex');
+        newUser.emailVerificationToken = crypto.createHash('sha256').update(verificationToken).digest('hex');
+        newUser.emailVerificationExpires = Date.now() + 10 * 60 * 1000; // Token valid for 10 minutes
         await newUser.save()
 
         //send email to verify user
-        await sendEmail({
-            to: email,
-            subject:"Verify Your Email",
-            text: `You have received this email because you have signed up to Open Cart. Here is your Verification token: ${verificationToken}. If this was not you please ignore this email. Do not share you token with anyone as this can lead to account breach`
-
-        })
+         await emailingService.registrationConfirmation(
+            newUser.email,
+            newUser.firstName,
+            verificationToken
+         )
         res.status(201).json({mesaage:"User created successfully. Check email for verification link"})
 
 
@@ -51,7 +62,7 @@ export const registerUser = async (req,res) =>{
 export const loginUser = async (req,res) =>{
     try {
         const {email,password} = req.body
-        const user = await findOne({email}).select('+password')
+        const user = await user.findOne({email}).select('+password')
 
         if (!user || !(await user.comparePassword(password))){
             return res.status(400),json({message:"Invalid credentials"})
@@ -86,7 +97,7 @@ export const loginUser = async (req,res) =>{
 //Get the User Profile
 export const getUserProfile = async (req,res) =>{
     try {
-        const user = await User.findById(req.user.id).select('-password -refreshToken -twoFactorSecret')
+        const user = await user.findById(req.user.id).select('-password -refreshToken -twoFactorSecret')
 
         if (!user) return res.status(404).json({message:"User not found"})
         
@@ -97,24 +108,36 @@ export const getUserProfile = async (req,res) =>{
     }
     
 }
+
 export const forgotPassword = async (req,res) =>{
     try {
         const {email} = req.body
-        const user = await User.findOne(email)
+        if(!email) return res.status(400).json({message:"Please provide an email address"})
 
-        if(!user) return res.status(404).json({message:"Email is not linked to any account. Please sign up"})
-        const resetToken = user.createPasswordResetToken();
-        await user.Save()
+         const existingUser = await user.findOne({email})
+        if(!existingUser) return res.status(404).json({message:"Email is not linked to any account. Please sign up"})
+        console.log("User found, proceeding to send reset link")
+        
+        const resetToken = crypto.randomBytes(32).toString('hex');
+        existingUser.passwordResetToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+        existingUser.passwordResetExpires = Date.now() + 10 * 60 * 1000; // Token valid for 10 minutes
+        console.log("Reset token generated and saved to user model")
 
-        await sendEmail({
-            to: email,
-            subject:"Password Reset Email",
-            text:`This email contains your password reset token. Kindly do not share this with anyone as it would compromise your account. If you did not request for a password change please consider changing your password. Here is your reset token ${resetToken}`
-        })
+        await existingUser.save({validateBeforeSave: false});
+        console.log("User model updated with reset token, proceeding to send email")
+
+        await emailingService.passwordReset(
+            existingUser.email,
+            existingUser.firstName,
+            resetToken,
+            
+        )
+        console.log("Password reset email sent successfully")
+        res.status(200).json({message:"Password reset link sent to your email. Please check your inbox"})
     } catch (error) {
+        console.error("Error in forgot password flow", error);
         logger.error("Error in resetting your password",{error})
         res.status(500).json({message:"Server error while resetting your password. Please try again later."})
-
     }
 }
 
@@ -123,12 +146,18 @@ export const forgotPassword = async (req,res) =>{
 export const resetPassword = async (req, res) => {
   try {
     const { token, newPassword } = req.body;
-
+    if (!token || !newPassword) {
+      return res.status(400).json({ message: 'Token and new password are required' });
+    }
+    if (newPassword.length < 8) {
+      return res.status(400).json({ message: 'New password must be at least 8 characters long' });
+    }
     const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
 
     const user = await User.findOne({
       passwordResetToken: hashedToken,
       passwordResetExpires: { $gt: Date.now() }
+  
     });
 
     if (!user) return res.status(400).json({ message: 'Token is invalid or has expired' });
@@ -141,6 +170,7 @@ export const resetPassword = async (req, res) => {
 
     res.status(200).json({ message: 'Password reset successful. You can now log in.' });
   } catch (error) {
+    logger.error("Error in resetting password", { error });
     res.status(500).json({ message: 'Error resetting password' });
   }
 };
@@ -149,13 +179,19 @@ export const resetPassword = async (req, res) => {
 export const verifyEmail = async (req,res) =>{
     try {
     const {token} = req.body
+    if(!token) return res.status(400).json({message:"Please provide a verification token"})
     const hashedToken = crypto.createHash('sha256').update(token).digest('hex')
 
-    const user = await User.findOne({createEmailVerificationToken:hashedToken})
+    const user = await User.findOne({
+      emailVerificationToken:hashedToken,
+      emailVerificationExpires: { $gt: Date.now() }
+    });
     if(!user) return res.status(404).json({message:"invalid or expired token"})
 
     user.isEmailVerified =true
     user.emailVeriricationToken = undefined
+    user.emailVerificationExpires = undefined
+
     await user.save()
 
     res.status(200).json({message:"Email verified successfully"})

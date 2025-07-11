@@ -1,6 +1,17 @@
 import PaymentService from "../Services/paymentService.js";
 import logger from "../utils/logger.js";
 import { validationResult } from 'express-validator';
+import User from '../models/user.model.js';
+import EmailService from "../Services/emailService.js";
+const emailService = new EmailService({
+  host: process.env.EMAIL_HOST,
+    port: process.env.EMAIL_PORT,
+    email: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+    secure: process.env.EMAIL_SECURE === 'true', 
+    fromName: 'OpenCart Support',
+    baseURL : process.env.BASE_URL || 'http://localhost:5000'
+});
 
 class PaymentController {
     static async createPaymentIntent(req, res) {

@@ -23,7 +23,7 @@ router.get('/profile/get-profile', protect, getUserProfile);
 router.put('/profile/update', protect, updateProfile);
 router.put('/profile/password/update',protect,updatePassword)
 router.post('/password/forgot', forgotPassword);
-router.post('/password/reset',resetPassword)
+router.post('/auth/password/reset',resetPassword)
 router.post('/email/verify', verifyEmail);
 router.post('/refresh-token', refreshAccessToken);
 router.post('/logout',protect,logoutUser)
