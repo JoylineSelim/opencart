@@ -1,8 +1,8 @@
-import PaymentService from "../Services/paymentService.js";
-import logger from "../utils/logger.js";
+import PaymentService from "../../Services/Payments/stripePayments.js";
+import logger from "../../utils/logger.js";
 import { validationResult } from 'express-validator';
-import User from '../models/user.model.js';
-import EmailService from "../Services/emailService.js";
+import User from '../../models/user.model.js';
+import EmailService from "../../Services/emailService.js";
 const emailService = new EmailService({
   host: process.env.EMAIL_HOST,
     port: process.env.EMAIL_PORT,

@@ -238,6 +238,7 @@ export const updatePassword = async (req, res) => {
     await user.save();
 
     res.status(200).json({ message: 'Password updated successfully' });
+    
   } catch (error) {
     res.status(500).json({ message: 'Could not update password' });
   }
