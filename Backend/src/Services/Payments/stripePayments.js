@@ -1,7 +1,7 @@
 import stripe from 'stripe';
-import Transaction from '../models/transaction.model.js';
-import User from '../models/user.model.js';
-import logger from '../utils/logger.js';
+import Transaction from '../../models/PaymentModels/stripe.model.js';
+import User from '../../models/user.model.js';
+import logger from '../../utils/logger.js';
 
 class PaymentService {
   // Create payment intent
