@@ -1,0 +1,13 @@
+# mongodb-pvc.yaml
+# Located in your project root or a dedicated 'kubernetes' folder
+
+apiVersion: v1
+kind: PersistentVolumeClaim # Type of Kubernetes object: PersistentVolumeClaim
+metadata:
+  name: mongodb-pvc # Name of the PVC. This name is referenced in mongodb-deployment.yaml
+spec:
+  accessModes:
+    - ReadWriteOnce # This volume can be mounted as read-write by a single node
+  resources:
+    requests:
+      storage: 1Gi # Request 1 Gigabyte of storage. Adjust as needed.

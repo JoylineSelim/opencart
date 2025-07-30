@@ -1,0 +1,17 @@
+FROM node:20-alpine
+
+# Set the working directory inside the container's root
+WORKDIR /app
+
+# Copy package.json and package-lock.json from the build context root
+COPY package*.json ./
+RUN npm install
+
+# Copy the entire Backend source code into a 'Backend' sub-directory within /app
+COPY Backend/ ./Backend/
+
+# Set the working directory for the CMD to the Backend's src folder
+WORKDIR /app/Backend
+
+EXPOSE 5000
+CMD ["node", "src/server.js"]

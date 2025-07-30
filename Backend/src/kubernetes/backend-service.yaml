@@ -1,0 +1,18 @@
+# backend-service.yaml
+# Place this in your kubernetes/ directory (e.g., opencart-backendDev/kubernetes/)
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: opencart-backend-service # Name of the Service. This will be the DNS name within the cluster.
+  labels:
+    app: opencart-backend # Label to link Service to Deployment/Pods
+spec:
+  selector:
+    app: opencart-backend # Selects Pods with the label 'app: opencart-backend'
+  ports:
+    - protocol: TCP
+      port: 5000 # The port this Service will listen on (ClusterIP)
+      targetPort: 5000 # The port on the Pods that the Service will forward traffic to
+      name: http-backend # Optional: name for the port
+  type: ClusterIP # Default Service type: internal to the cluster

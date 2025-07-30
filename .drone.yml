@@ -1,0 +1,114 @@
+kind: pipeline
+name: opencart-backend-pipeline
+
+networks:
+  default:
+    external: false
+
+steps:
+  - name: install dependencies
+    image: node:20-alpine
+    commands:
+      # This npm install currently runs at the root, which is where your package.json is now.
+      - npm install
+    network_mode: default
+
+  - name: run backend tests
+    image: node:20-alpine
+    commands:
+      - apk update
+      - apk add busybox-extras netcat-openbsd
+      - echo "--- Waiting 10 seconds for mongo service to be ready ---"
+      - sleep 10
+      - echo "--- Contents of /etc/hosts ---"
+      - cat /etc/hosts
+      - echo "--- Contents of /etc/resolv.conf ---"
+      - cat /etc/resolv.conf
+      - echo "--- Attempting to ping mongo service (expecting failure on some setups) ---"
+      - ping -c 5 mongo || true
+      - echo "--- Checking connectivity to mongo:27017 (expecting failure on some setups) ---"
+      - nc -vz mongo 27017 || true
+      - echo "--- Attempting to ping host.docker.internal ---"
+      - ping -c 5 host.docker.internal || true
+      - echo "--- Checking connectivity to host.docker.internal:27017 ---"
+      - nc -vz host.docker.internal 27017 || true
+      # npm test will now run from the root, which should find tests under Backend/src/tests
+      - npm test
+    environment:
+      NODE_ENV: test
+      MONGO_URI: mongodb://host.docker.internal:27017/opencart_test_db
+      JWT_SECRET: a_strong_test_secret_for_jwt
+      JWT_ACCESS_EXPIRES_IN: 1h
+      JWT_REFRESH_EXPIRES_IN: 7d
+      GOOGLE_CLIENT_ID: your_test_google_client_id
+    network_mode: default
+    services:
+      - name: mongo
+        image: mongo:latest
+        ports:
+          - 27017
+        environment:
+          MONGO_INITDB_DATABASE: opencart_test_db
+        network_mode: default
+
+  # Simplified test step to isolate the issue
+  - name: test docker step
+    image: alpine:latest
+    commands:
+      - echo "=== STEP IS STARTING ==="
+      - echo "Current directory:"
+      - pwd
+      - echo "Directory contents:"
+      - ls -la
+      - echo "=== STEP IS WORKING ==="
+    network_mode: default
+
+  # Fixed Docker build step - corrected file paths and Dockerfile syntax
+  - name: build backend image
+    image: docker:20-dind
+    commands:
+      - echo "=== DOCKER STEP STARTING ==="
+      - echo "Checking Docker version..."
+      - docker version || echo "Docker version failed"
+      - echo "Listing current directory..."
+      - ls -la
+      - echo "=== DOCKER STEP IS RUNNING ==="
+      - echo "Checking if Backend directory exists..."
+      - ls -la Backend/
+      - echo "Backend directory found, proceeding with build..."
+      - echo "Creating Dockerfile..."
+      - |
+        cat > Dockerfile.build << 'EOF'
+        FROM node:20-alpine
+        
+        # Set the working directory inside the container's root
+        WORKDIR /app
+        
+        # Copy package.json and package-lock.json from the build context root
+        COPY package*.json ./
+        RUN npm install
+        
+        # Copy the entire Backend source code into a 'Backend' sub-directory within /app
+        COPY Backend/ ./Backend/
+        
+        # Set the working directory for the CMD to the Backend's src folder
+        WORKDIR /app/Backend
+        
+        EXPOSE 5000
+        CMD ["node", "src/server.js"]
+        EOF
+      - echo "Generated Dockerfile content:"
+      - cat Dockerfile.build
+      - echo "Building Docker image..."
+      - docker build -t opencart-backend:latest -f Dockerfile.build .
+      - echo "Build completed. Listing images:"
+      - docker images
+      - echo "Checking for our specific image:"
+      - docker images opencart-backend:latest
+    privileged: true
+    network_mode: default
+
+volumes:
+  - name: dockersock
+    host:
+      path: /var/run/docker.sock

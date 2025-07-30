@@ -1,0 +1,18 @@
+# mongodb-service.yaml
+# Located in your project root or a dedicated 'kubernetes' folder
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo-service # Name of the Service. This will be the DNS name for MongoDB within the cluster.
+  labels:
+    app: mongodb # Label to link Service to MongoDB pods
+spec:
+  selector:
+    app: mongodb # Selects pods with the label 'app: mongodb'
+  ports:
+    - protocol: TCP
+      port: 27017 # The port this Service will listen on (ClusterIP)
+      targetPort: 27017 # The port on the Pods that the Service will forward traffic to
+      name: http-mongo # Optional: name for the port
+  type: ClusterIP # Default Service type: internal to the cluster

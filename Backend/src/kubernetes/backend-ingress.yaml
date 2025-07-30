@@ -1,0 +1,26 @@
+# backend-ingress.yaml
+# Place this in your kubernetes/ directory (e.g., opencart-backendDev/kubernetes/)
+
+apiVersion: networking.k8s.io/v1 # API version for Ingress
+kind: Ingress # Type of Kubernetes object: Ingress
+
+metadata:
+  name: opencart-backend-ingress # Name of your Ingress resource
+  annotations:
+    # Removed: nginx.ingress.kubernetes.io/rewrite-target: /
+    # This ensures the full path (e.g., /api/products/getAllProducts) is passed to the backend.
+    # If your backend expects the /api prefix in its routes, removing this is necessary.
+
+spec:
+  ingressClassName: nginx # IMPORTANT: Specify the Ingress Class. For Docker Desktop/Minikube, it's usually 'nginx'.
+  rules:
+    - host: opencart.local # Define a hostname for accessing your backend
+      http:
+        paths:
+          - path: /api # All requests starting with /api will be routed
+            pathType: Prefix # Matches any path that begins with /api
+            backend:
+              service:
+                name: opencart-backend-service # Name of your backend Service (from backend-service.yaml)
+                port:
+                  number: 5000 # Port of your backend Service

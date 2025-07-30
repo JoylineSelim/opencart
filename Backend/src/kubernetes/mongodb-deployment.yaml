@@ -1,0 +1,35 @@
+# mongodb-deployment.yaml
+# Located in your project root or a dedicated 'kubernetes' folder
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongodb-deployment # Name of the MongoDB Deployment
+  labels:
+    app: mongodb # Label to identify MongoDB pods
+spec:
+  replicas: 1 # Typically 1 replica for a simple MongoDB setup, or more for replica sets
+  selector:
+    matchLabels:
+      app: mongodb # Selector to link Deployment to Pods
+  template:
+    metadata:
+      labels:
+        app: mongodb # Labels for the Pods
+    spec:
+      containers:
+        - name: mongodb # Name of the container
+          image: mongo:latest # Official MongoDB Docker image
+          imagePullPolicy: IfNotPresent # Pull if not present locally (good for official images)
+          ports:
+            - containerPort: 27017 # Default MongoDB port
+          env:
+            - name: MONGO_INITDB_DATABASE # Initial database name
+              value: "opencart_prod" # This should match the database name in your backend's MONGO_URI
+          volumeMounts: # Mount the persistent volume
+            - name: mongodb-storage # Name of the volume mount
+              mountPath: /data/db # Path inside the container where MongoDB stores data
+      volumes: # Define the volume to be mounted
+        - name: mongodb-storage
+          persistentVolumeClaim: # Reference the PersistentVolumeClaim
+            claimName: mongodb-pvc # Name of the PVC (we'll define this next)

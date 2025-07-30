@@ -1,0 +1,14 @@
+# Ignore node_modules to ensure a fresh install inside the container
+node_modules
+# Ignore development and test artifacts
+npm-debug.log
+.env # Do NOT commit your .env file to version control or include it in the image directly for production
+logs/
+*.log
+# Ignore test files (if you don't need them in the final image)
+Backend/src/tests/
+# IDE specific files
+.vscode
+.idea
+# macOS files
+.DS_Store

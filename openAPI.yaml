@@ -1,0 +1,688 @@
+# openapi.yaml
+# Place this file in your project's documentation/ or api-specs/ directory
+
+openapi: 3.0.0
+info:
+  title: OpenCart Monolithic Backend API
+  version: 1.0.0
+  description: API specification for the OpenCart monolithic backend, handling products, users, and orders/transactions.
+
+servers:
+  - url: http://localhost:5000/api
+    description: Local Development Server (via kubectl port-forward)
+  # - url: http://opencart.local/api # Alternative local access via Ingress
+  # - url: https://your-cloud-domain.com/api # Placeholder for Cloud deployment
+
+tags:
+  - name: Products
+    description: Operations related to product management
+  - name: Users
+    description: User authentication and management
+  - name: Orders & Transactions
+    description: Managing customer orders and payment transactions
+
+paths:
+  /products/getAllProducts:
+    get:
+      tags:
+        - Products
+      summary: Get all products
+      operationId: getAllProducts
+      responses:
+        '200':
+          description: A list of products.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Product'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /products/createNewProduct:
+    post:
+      tags:
+        - Products
+      summary: Create a new product
+      operationId: createNewProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductInput'
+      responses:
+        '201':
+          description: Product created successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Product'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /products/getOneProduct/{id}:
+    get:
+      tags:
+        - Products
+      summary: Get a product by ID
+      operationId: getOneProductById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID of the product to retrieve
+          schema:
+            type: string
+            format: uuid # Or just 'string' if not strictly UUID
+      responses:
+        '200':
+          description: Product details.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Product'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /products/updateProduct/{id}:
+    put:
+      tags:
+        - Products
+      summary: Update a product by ID
+      operationId: updateProductById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID of the product to update
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductUpdateInput'
+      responses:
+        '200':
+          description: Product updated successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Product'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /products/deleteProduct/{id}:
+    delete:
+      tags:
+        - Products
+      summary: Delete a product by ID
+      operationId: deleteProductById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID of the product to delete
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Product deleted successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Product deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /user/register:
+    post:
+      tags:
+        - Users
+      summary: Register a new user
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserInput'
+      responses:
+        '201':
+          description: User registered successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/User'
+        '400':
+          description: Invalid input or email already exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                example:
+                  success: false
+                  message: Email is already linked to an account.
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /user/login:
+    post:
+      tags:
+        - Users
+      summary: User login
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: user@example.com
+                password:
+                  type: string
+                  format: password
+                  example: mySecurePassword123!
+      responses:
+        '200':
+          description: User logged in successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  token:
+                    type: string
+                    example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Invalid credentials.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                example:
+                  success: false
+                  message: Invalid email or password.
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /user/getAllUsers:
+    get:
+      tags:
+        - Users
+      summary: Get all registered users
+      operationId: getAllUsers
+      # security:
+      #   - bearerAuth: [] # Requires authentication
+      responses:
+        '200':
+          description: A list of all users.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /orders/createOrder:
+    post:
+      tags:
+        - Orders & Transactions
+      summary: Create a new order (Transaction)
+      operationId: createOrder
+      # security:
+      #   - bearerAuth: [] # Requires authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransactionInput'
+      responses:
+        '201':
+          description: Order/Transaction created successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Transaction'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: User or Product not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                example:
+                  success: false
+                  message: User not found.
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /orders/getTransactionsByUser/{userId}:
+    get:
+      tags:
+        - Orders & Transactions
+      summary: Get all transactions/orders for a specific user
+      operationId: getTransactionsByUserId
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: ID of the user to retrieve transactions for
+          schema:
+            type: string
+      # security:
+      #   - bearerAuth: [] # Requires authentication
+      responses:
+        '200':
+          description: A list of transactions/orders for the specified user.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Transaction'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /orders/getOneTransaction/{id}:
+    get:
+      tags:
+        - Orders & Transactions
+      summary: Get a single transaction/order by ID
+      operationId: getOneTransactionById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID of the transaction/order to retrieve
+          schema:
+            type: string
+      # security:
+      #   - bearerAuth: [] # Requires authentication
+      responses:
+        '200':
+          description: Details of the specified transaction/order.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Transaction'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+components:
+  schemas:
+    Product:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: 60c72b2f9b1e8e001c8e0001
+        name:
+          type: string
+          example: Wireless Headphones Pro
+        description:
+          type: string
+          example: Premium noise-cancelling wireless headphones.
+        price:
+          type: number
+          format: float
+          example: 199.99
+        image:
+          type: string
+          format: url
+          example: https://placehold.co/600x400/800080/FFFFFF?text=Headphones
+        rating:
+          type: number
+          format: float
+          example: 4.6
+        numReviews:
+          type: integer
+          example: 350
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - name
+        - price
+
+    ProductInput:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Wireless Headphones Pro
+        description:
+          type: string
+          example: Premium noise-cancelling wireless headphones.
+        price:
+          type: number
+          format: float
+          example: 199.99
+        image:
+          type: string
+          format: url
+          example: https://placehold.co/600x400/800080/FFFFFF?text=Headphones
+        rating:
+          type: number
+          format: float
+          example: 4.6
+        numReviews:
+          type: integer
+          example: 350
+      required:
+        - name
+        - price
+
+    ProductUpdateInput:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Updated Headphones Name
+        description:
+          type: string
+          example: Updated description.
+        price:
+          type: number
+          format: float
+          example: 189.99
+        image:
+          type: string
+          format: url
+          example: https://new-image-url.com
+        rating:
+          type: number
+          format: float
+          example: 4.7
+        numReviews:
+          type: integer
+          example: 360
+
+    User:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: 60c72b2f9b1e8e001c8e0002
+        firstName:
+          type: string
+          example: Demo
+        lastName:
+          type: string
+          example: User
+        email:
+          type: string
+          format: email
+          example: demo.user@example.com
+        phone:
+          type: string
+          example: "1234567890"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - firstName
+        - lastName
+        - email
+        - password # Note: Password is usually not returned in GET responses for security
+
+    UserInput:
+      type: object
+      properties:
+        firstName:
+          type: string
+          example: Demo
+        lastName:
+          type: string
+          example: User
+        email:
+          type: string
+          format: email
+          example: demo.user@example.com
+        password:
+          type: string
+          format: password
+          example: DemoPassword123!
+        phone:
+          type: string
+          example: "1234567890"
+      required:
+        - firstName
+        - lastName
+        - email
+        - password
+
+    Transaction:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: 60c72b2f9b1e8e001c8e0003
+        user:
+          type: string
+          example: 60c72b2f9b1e8e001c8e0002 # User ID
+        productId:
+          type: string
+          example: 60c72b2f9b1e8e001c8e0001 # Product ID
+        quantity:
+          type: integer
+          example: 1
+        totalPrice:
+          type: number
+          format: float
+          example: 199.99
+        currency:
+          type: string
+          enum: ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'CNY', 'SEK', 'NZD','KES', 'NGN', 'GHS', 'ZAR', 'INR', 'PKR', 'BDT', 'LKR', 'MUR', 'TND', 'MAD', 'EGP']
+          example: USD
+        transactionDate:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: ['pending', 'completed', 'failed', 'refunded', 'cancelled', 'processing', 'on_hold']
+          example: processing
+        paymentMethod:
+          type: string
+          enum: ['credit_card', 'paypal', 'bank_transfer', 'crypto']
+          example: credit_card
+        shippingAddress:
+          type: string
+          example: 123 Main Street, Anytown, 12345, USA
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - user
+        - productId
+        - quantity
+        - totalPrice
+        - currency
+        - paymentMethod
+        - shippingAddress
+
+    TransactionInput:
+      type: object
+      properties:
+        user:
+          type: string
+          description: ID of the user placing the order.
+          example: 60c72b2f9b1e8e001c8e0002
+        productId:
+          type: string
+          description: ID of the product being ordered.
+          example: 60c72b2f9b1e8e001c8e0001
+        quantity:
+          type: integer
+          example: 1
+        totalPrice:
+          type: number
+          format: float
+          example: 199.99
+        currency:
+          type: string
+          enum: ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'CNY', 'SEK', 'NZD','KES', 'NGN', 'GHS', 'ZAR', 'INR', 'PKR', 'BDT', 'LKR', 'MUR', 'TND', 'MAD', 'EGP']
+          example: USD
+        paymentMethod:
+          type: string
+          enum: ['credit_card', 'paypal', 'bank_transfer', 'crypto']
+          example: credit_card
+        shippingAddress:
+          type: string
+          example: 123 Main Street, Anytown, 12345, USA
+      required:
+        - user
+        - productId
+        - quantity
+        - totalPrice
+        - currency
+        - paymentMethod
+        - shippingAddress
+
+    Error:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: Something went wrong.
+
+  responses:
+    BadRequest:
+      description: Invalid input provided.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+            example:
+              success: false
+              message: Invalid input.
+
+    NotFound:
+      description: Resource not found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+            example:
+              success: false
+              message: Resource not found.
+
+    ServerError:
+      description: Internal server error.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+            example:
+              success: false
+              message: Internal server error.
+
+  securitySchemes:
+    bearerAuth: # Can be used for JWT authentication
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

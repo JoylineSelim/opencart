@@ -1,0 +1,40 @@
+# backend-deployment.yaml
+# Place this in your kubernetes/ directory (e.g., opencart-backendDev/kubernetes/)
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opencart-backend-deployment # Name of the Deployment
+  labels:
+    app: opencart-backend # Label to identify this application
+spec:
+  replicas: 1 # Number of desired replicas (pods). Start with 1.
+  selector:
+    matchLabels:
+      app: opencart-backend # Selector to link Deployment to Pods
+  template:
+    metadata:
+      labels:
+        app: opencart-backend # Labels for the Pods created by this Deployment
+    spec:
+      containers:
+        - name: opencart-backend # Name of the container within the Pod
+          image: opencart-backend:latest # Your Docker image name and tag from Drone CI
+          imagePullPolicy: Never # Use 'Never' for local images, 'IfNotPresent' or 'Always' for registry images
+          ports:
+            - containerPort: 5000 # The port your monolithic backend listens on inside the container
+          env: # Environment variables for your Node.js application
+            - name: MONGO_URI # MongoDB connection URI
+              value: "mongodb://mongo-service:27017/opencart_prod" # Connect to the MongoDB Service
+            - name: JWT_SECRET # Your JWT secret key (use a strong one, ideally from Kubernetes Secrets)
+              value: "your_production_jwt_secret_key" # Replace with your actual production secret
+            - name: PORT # Explicitly set the port for the app to listen on
+              value: "5000"
+            # Add any other environment variables your monolithic backend needs
+          resources: # Define resource requests and limits
+            requests:
+              memory: "256Mi" # Increased slightly for a monolithic app
+              cpu: "200m"
+            limits:
+              memory: "512Mi"
+              cpu: "400m"
