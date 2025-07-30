@@ -1,0 +1,21 @@
+Prerequisites:
+You need docker, drone CLI, MongoDB installed as well as Kubernetes cluster installed in docker
+Enable wsl within docker if using wsl
+
+Steps for making and deploying a local instance of the opencart backend system:
+1. Create the image and download dependencies while running tests to ensure it runs as intended:
+	drone exec --pipeline opencart-backend-pipeline --trusted --volume /var/run/docker.sock:/var/run/docker.sock
+	Note: Drone should be running within docker
+
+2. Create Kubernetes pods for microservice:
+	kubectl apply -f kubernetes/backend-ingress.yaml
+	kubectl apply -f kubernetes/backend-service.yaml
+	kubectl apply -f kubernetes/backend-deployment.yaml
+	kubectl apply -f kubernetes/mongodb-deployment.yaml
+	kubectl apply -f kubernetes/mongodb-service.yaml
+	kubectl apply -f kubernetes/mongodb-pvc.yaml
+	Note: Should be ran in opencart-main/Backend/src/
+	Note: Docker and mongoDB have to be running. Kubernetes cluster should be installed and running on docker.
+
+
+	

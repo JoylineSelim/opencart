@@ -1,0 +1,50 @@
+# product-deployment.yaml
+# Located in your project root (e.g., opencart-backendDev/) or a dedicated 'kubernetes' folder
+
+apiVersion: apps/v1 # API version for Deployment
+kind: Deployment # Type of Kubernetes object: Deployment
+
+metadata:
+  name: product-service-deployment # Name of the Deployment
+  labels:
+    app: product-service # Label to identify this application
+
+spec:
+  replicas: 2 # Number of desired replicas (pods) for your Product Service. You can adjust this.
+  selector:
+    matchLabels:
+      app: product-service # Selector to link Deployment to Pods with this label
+  template:
+    metadata:
+      labels:
+        app: product-service # Labels for the Pods created by this Deployment
+    spec:
+      containers:
+        - name: product-service # Name of the container within the Pod
+          image: opencart-backend:latest # Your Docker image name and tag
+          imagePullPolicy: Never # IMPORTANT: Use 'Never' for local images, 'IfNotPresent' or 'Always' for registry images
+
+          ports:
+            - containerPort: 5000 # The port your Node.js application listens on inside the container
+
+          env: # Environment variables for your Node.js application
+            - name: MONGO_URI # MongoDB connection URI
+              value: "mongodb://mongo-service:27017/opencart_prod" # Connect to the MongoDB Service (we'll create this next)
+            - name: JWT_SECRET # Your JWT secret key (use a strong one, ideally from Kubernetes Secrets)
+              value: "your_production_jwt_secret_key" # Replace with your actual production secret
+            - name: JWT_ACCESS_EXPIRES_IN
+              value: "1h"
+            - name: JWT_REFRESH_EXPIRES_IN
+              value: "7d"
+            - name: GOOGLE_CLIENT_ID # Your Google Client ID
+              value: "your_google_client_id" # Replace with your actual ID
+            - name: NODE_ENV
+              value: "production" # Set to production for deployed environment
+            # Add any other environment variables required by your Node.js backend
+          resources: # Define resource requests and limits for better stability
+            requests:
+              memory: "128Mi" # Request 128 Megabytes of memory
+              cpu: "100m"    # Request 0.1 CPU core
+            limits:
+              memory: "256Mi" # Limit to 256 Megabytes of memory
+              cpu: "200m"    # Limit to 0.2 CPU core

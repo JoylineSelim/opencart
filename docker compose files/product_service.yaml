@@ -1,0 +1,23 @@
+# product-service.yaml
+# Located in your project root (e.g., opencart-backendDev/) or a dedicated 'kubernetes' folder
+
+apiVersion: v1 # API version for Service
+kind: Service # Type of Kubernetes object: Service
+
+metadata:
+  name: product-service # Name of the Service. This will be the DNS name within the cluster.
+  labels:
+    app: product-service # Label to link Service to Deployment/Pods
+
+spec:
+  selector:
+    app: product-service # Selects Pods with the label 'app: product-service'
+  ports:
+    - protocol: TCP
+      port: 5000 # The port this Service will listen on (ClusterIP)
+      targetPort: 5000 # The port on the Pods that the Service will forward traffic to
+      name: http-product # Optional: name for the port
+  type: ClusterIP # Default Service type: internal to the cluster
+  # For external access, you might use NodePort or LoadBalancer (if your cluster supports it)
+  # type: NodePort # Uncomment this if you want to access from outside the cluster easily on a local setup (like Minikube)
+  # nodePort: 30000 # Optional: specific port on the node, must be in range 30000-32767
