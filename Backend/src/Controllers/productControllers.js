@@ -37,7 +37,7 @@
 
     export const getOneProduct = async (req,res) => {
             try {
-                const productSearched = await product.findById(req.params.id)
+                const productSearched = await Product.findById(req.params.id)// Fixed typo in product.find -- product should have been uppercase
                 if (!productSearched){
                     res.status(404).json({success:false, message:"Product Not Found"})
                 }
