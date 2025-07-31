@@ -9,7 +9,7 @@ import {
 const router = express.Router()
 //Routes
 router.post('/stk/initiate',initiateSTK);
-router.post('/stk/status', protect, paymentStatus);
+router.post('/stk/status', paymentStatus);
 router.post('/stk/callback', mpesaCallback);
 
 export default router

@@ -34,10 +34,7 @@ class MpesaService {
 
 async getAccessToken() {
   const auth = Buffer.from(`${this.consumerKey}:${this.consumerSecret}`).toString('base64');
-  console.log('Encoded Auth Header:', auth);
-  console.log('Key:', this.consumerKey);
- console.log('Secret:', this.consumerSecret);
-
+ 
   try {
     const response = await axios.get(
       `${this.baseURL}/oauth/v1/generate?grant_type=client_credentials`,
@@ -59,12 +56,6 @@ async getAccessToken() {
 generatePassword(){
     const timestamp = new Date().toISOString().replace(/[^0-9]/g,'').slice(0,-3)
     const password = Buffer.from(this.businessShortCode + this.passkey + timestamp).toString('base64')
-
-    console.log('Timestamp:', timestamp);
-    console.log('Password:', password);  
-    console.log('BusinessShortCode:', this.businessShortCode);
-    console.log('Passkey:', this.passkey);
-
     return {password,timestamp}
 }
 
