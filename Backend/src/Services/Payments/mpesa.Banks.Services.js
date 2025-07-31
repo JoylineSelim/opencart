@@ -59,12 +59,18 @@ async getAccessToken() {
 generatePassword(){
     const timestamp = new Date().toISOString().replace(/[^0-9]/g,'').slice(0,-3)
     const password = Buffer.from(this.businessShortCode + this.passkey + timestamp).toString('base64')
+
+    console.log('Timestamp:', timestamp);
+    console.log('Password:', password);  
+    console.log('BusinessShortCode:', this.businessShortCode);
+    console.log('Passkey:', this.passkey);
+
     return {password,timestamp}
 }
 
 //initiate STKPush
 async initiateSTKPush(phone,amount,accountReference,transactionDesc){
-    const accessTokem = await this.getAccessToken()
+    const accessToken = await this.getAccessToken()
     const {password,timestamp} = this.generatePassword()
 
     const requestBody = {
@@ -83,7 +89,7 @@ async initiateSTKPush(phone,amount,accountReference,transactionDesc){
     try {
         const response = await axios.post(`${this.baseURL}/mpesa/stkpush/v1/processrequest`,requestBody,{
             headers:{
-                'Authorization':`Bearer ${accessTokem}`,
+                'Authorization':`Bearer ${accessToken}`,
                 'Content-Type':'application/json'
             }
         })
