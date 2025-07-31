@@ -87,9 +87,14 @@ export const mpesaCallback = async (req,res) =>{
       console.warn(`Transaction not found for CheckoutRequestID: ${CheckoutRequestID}`);
       return res.status(404).json({ message: 'Transaction not found' });
     }
+    const normalizedStatus =(Status) =>{
+      const allowedStatuses = ['successful', 'failed', 'pending'];
+      const normalized = (Status || '').toLowerCase();
+      return allowedStatuses.includes(normalized) ? normalized : 'pending';
+    }
 
-    // Update transaction status
-    transaction.status = ResultCode === 0 ? 'completed' : 'failed';
+    // Update transaction 
+    transaction.status = normalizedStatus(ResultCode === 0 ? 'successful' : 'failed');
     transaction.resultDesc = ResultDesc;
     transaction.resultCode = ResultCode;
 

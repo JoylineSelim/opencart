@@ -7,7 +7,7 @@ const bankTransactionSchema = new mongoose.Schema({
   accountNumber: { type: String, required: true },
   bankCode: { type: String, required: true },
   accountName: { type: String, required: true },
-  status: { type: String, enum: ['Successful','Failed','Pending'], default: 'Pending' },
+  status: { type: String, enum: ['successful','failed','pending'], default: 'pending',set: v => (v || '').toLowerCase()},
   mpesaReceiptNumber: String,
   transactionDate: Date,
   resultDesc: String,

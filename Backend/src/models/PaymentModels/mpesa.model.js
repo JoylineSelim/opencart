@@ -6,7 +6,7 @@ const MPESATransactionsSchema = new mongoose.Schema({
   amount: { type: Number, required: true },
   phone: { type: String, required: true },
   accountReference: { type: String, required: true },
-  status: { type: String, enum: ['Successful','Failed','Pending'], default: 'Pending' },
+  status: { type: String, enum: ['successful','failed','pending'], default: 'pending', set: v => (v || '').toLowerCase()},
   mpesaReceiptNumber: String,
   transactionDate: Date,
   transactionDesc: String,

@@ -169,9 +169,21 @@ export const resultCallback = async (req, res) => {
       
       // Find and update bank transaction
       const transaction = await BankTransaction.findOne({ conversationID: ConversationID });
+
+      if (!transaction) {
+        console.warn(`Transaction not found for ConversationID: ${ConversationID}`);
+        return res.status(404).json({ message: 'Transaction not found' });
+      }
+
       
       if (transaction) {
-        transaction.status = ResultCode === 0 ? 'completed' : 'failed';
+        const normalizedStatus = (status) => {
+          const allowedStatuses = ['successful', 'failed', 'pending'];
+          const normalized = (status || '').toLowerCase();
+          return allowedStatuses.includes(normalized) ? normalized : 'pending';
+        }
+
+        transaction.status = normalizedStatus(ResultCode === 0 ? 'successful' : 'failed');
         transaction.resultDesc = ResultDesc;
         
         if (ResultCode === 0 && Result.ResultParameters) {
