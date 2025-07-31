@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import EmailService from './Services/emailService.js';  
 import productRouter from './Routes/productRoutes.js';
 import stripePaymentRouter from './Routes/PaymentsRoutes/stripePaymentRoutes.js';
+import cors from 'cors'
 import userRouter from './Routes/userRoutes.js'
 import emailRouter from './Routes/emailRoutes.js';
 import orderRouter from './Routes/orderRoutes.js';
@@ -19,6 +20,10 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, '.env') })
 
 app.use(express.json());
+app.use(cors({
+    origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+    credentials: true,
+}));
 app.use("/api/products/",productRouter)
 app.use('/api/payments/stripe',stripePaymentRouter)
 app.use('/api/user',userRouter)
