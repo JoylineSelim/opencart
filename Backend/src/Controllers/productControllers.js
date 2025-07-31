@@ -21,7 +21,7 @@
         .json({ success: false, message: "Please provide all the fields!" });
     }
     try {
-        product.rating = ((product.rating*product.numReviews)+newRating)/(product.numReviews +1)
+        product.rating = (product.rating*product.numReviews)/(product.numReviews +1)//removed newRating which was previously undeclaired
         product.numReviews +=1
         const newProduct =  await product.save();
         res.status(201).json({ success: true, data: newProduct });
