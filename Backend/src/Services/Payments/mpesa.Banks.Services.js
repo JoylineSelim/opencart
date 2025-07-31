@@ -91,7 +91,6 @@ async initiateSTKPush(phone,amount,accountReference,transactionDesc){
         return response.data
     } catch (error) {
       console.error('STK Push error:', error.response?.data || error.message);
-      logger.error('STK Init error',error)
       throw new Error('STK Push Failed');
         
         
