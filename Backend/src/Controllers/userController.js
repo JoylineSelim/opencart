@@ -1,4 +1,4 @@
-import user from "../models/user.model.js";
+import User from "../models/user.model.js";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
@@ -6,6 +6,7 @@ import logger from '../utils/logger.js'
 import { generateAccessToken,generateRefreshToken } from "../utils/tokenService.js";
 import { OAuth2Client } from "google-auth-library";
 import EmailService from "../Services/emailService.js";
+import rateLimit from "express-rate-limit";
 
 const emailingService = new EmailService({
     host: process.env.EMAIL_HOST,
@@ -27,13 +28,13 @@ export const registerUser = async (req,res) =>{
             return res.status(400).json({message:"Provide all fields"})
         }
         //const confirmPassword = async
-        const existingUser = await user.findOne({email})
+        const existingUser = await User.findOne({email})
         if(existingUser){
           return  res.status(400).json({message:"Email is linked to an account"})
 
         }
 
-        const newUser = await user.create({
+        const newUser = await User.create({
             email,password,firstName,lastName,phone
         })
 
@@ -62,31 +63,32 @@ export const registerUser = async (req,res) =>{
 export const loginUser = async (req,res) =>{
     try {
         const {email,password} = req.body
-        const user = await user.findOne({email}).select('+password')
+        const existingUser = await User.findOne({email}).select('+password')
 
-        if (!user || !(await user.comparePassword(password))){
-            return res.status(400),json({message:"Invalid credentials"})
+        if (!existingUser || !(await existingUser.comparePassword(password))){
+            return res.status(400).json({message:"Invalid credentials"})
         }
         
-        const accessToken = generateAccessToken(user);
-        const refreshToken = generateRefreshToken(user);
+        const accessToken = generateAccessToken(User);
+        const refreshToken = generateRefreshToken(User);
 
-        user.refreshToken.push({ token: refreshToken });
-        await user.save()
+        existingUser.refreshToken.push({ token:refreshToken });
+        await existingUser.save()
 
         res.status(200).json({
       accessToken,
       refreshToken,
       user: {
-        id: user._id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        role: user.role},
+        id:existingUser._id,
+        email:existingUser.email,
+        firstName:existingUser.firstName,
+        lastName:existingUser.lastName,
+        role:existingUser.role},
         message:"Login Successful"
         })
     } catch (error) {
         logger.error("Login attempt failed",{error})
+        logger.error("Login attempt failed", { error: error.message || error });
         res.status(500).json({message:"Server Error"})
         
     }
@@ -114,7 +116,7 @@ export const forgotPassword = async (req,res) =>{
         const {email} = req.body
         if(!email) return res.status(400).json({message:"Please provide an email address"})
 
-         const existingUser = await user.findOne({email})
+         const existingUser = await User.findOne({email})
         if(!existingUser) return res.status(404).json({message:"Email is not linked to any account. Please sign up"})
         console.log("User found, proceeding to send reset link")
         
@@ -171,6 +173,7 @@ export const resetPassword = async (req, res) => {
     res.status(200).json({ message: 'Password reset successful. You can now log in.' });
   } catch (error) {
     logger.error("Error in resetting password", { error });
+    logger.error("Error in resetting password", { error: error.message || error });
     res.status(500).json({ message: 'Error resetting password' });
   }
 };
@@ -179,7 +182,7 @@ export const resetPassword = async (req, res) => {
 export const verifyEmail = async (req,res) =>{
     try {
     const {token} = req.body
-    if(!token) return res.status(400).json({message:"Please provide a verification token"})
+    if(!token) return res.status(400).json({message:"No verification token provided"})
     const hashedToken = crypto.createHash('sha256').update(token).digest('hex')
 
     const user = await User.findOne({
@@ -189,7 +192,7 @@ export const verifyEmail = async (req,res) =>{
     if(!user) return res.status(404).json({message:"invalid or expired token"})
 
     user.isEmailVerified =true
-    user.emailVeriricationToken = undefined
+    user.emailVerificationToken= undefined
     user.emailVerificationExpires = undefined
 
     await user.save()
@@ -354,3 +357,52 @@ export const googleLogin = async (req, res) => {
     res.status(401).json({ message: 'Invalid Google ID token' });
   }
 };
+
+export const createTestVerificationToken = async (req,res) => {
+  try {
+    const {email} = req.body
+    // Generate token
+    const token = crypto.randomBytes(32).toString('hex');
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+    
+    // Find user and set verification token
+    const user = await User.findOne({ email });
+    if (!user) {
+      throw new Error('User not found');
+    }
+    
+    user.emailVerificationToken = hashedToken;
+    user.emailVerificationExpires = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+    user.isEmailVerified = false;
+    
+    await user.save();
+    
+    console.log('Test verification setup complete:');
+    console.log('Email:', email);
+    console.log('Token to use in API call:', token);
+    console.log('Hashed token in DB:', hashedToken);
+    res.status(200).json({
+      message: 'Test verification token created successfully',
+      token,
+      hashedToken
+    });
+    return { token, hashedToken };
+  } catch (error) {
+    console.error('Error creating test token:', error);
+    res.status(500).json({ message: 'Error creating test verification token' });
+  }
+};
+/*
+export const resendVerificationEmail = async (req, res) => {
+    const resendLimit = rateLimit({
+        windowMs: 15 * 60 * 1000, // 15 minutes
+        max: 3, // Limit each IP to 3 requests per windowMs
+        message: 'Too many requests, please try again later.',
+        standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+        legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+
+    }
+
+    )
+    const user = await User.findById(req.user.id)
+    */
